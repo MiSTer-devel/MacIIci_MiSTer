@@ -1,0 +1,3 @@
+# the IIci's one PLL, written in the shape the Altera PLL wizard emits
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) pll_iici.v ]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) pll_iici/pll_iici_0002.v ]
