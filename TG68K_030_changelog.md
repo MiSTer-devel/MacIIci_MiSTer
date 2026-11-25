@@ -1,7 +1,7 @@
 # The SE/30 core's 68030: changes to the TG68K kernel, the PMMU, and a new 68882
 
-Daniel Baum, 2026-10-24, updated 2026-11-11 (fixes 37-46, the known-open list, how it was tested). The CPU of the Macintosh SE/30
-and IIcx MiSTer cores, measured against where it came from:
+Daniel Baum, 2026-10-24, updated 2026-11-11 (fixes 37-46, the known-open list, how it was tested) and 2026-11-24
+(fixes 47-48). The CPU of the Macintosh SE/30, IIcx and IIci MiSTer cores, measured against where it came from:
 
 | file | baseline |
 |---|---|
@@ -49,7 +49,7 @@ development history.
   memaddr_delta_regb` as one three-input sum (one carry chain) instead of two chained adders;
   the value is the same.
 
-## Bug fixes (46)
+## Bug fixes (48)
 
 ### Bus and bus errors
 
@@ -172,6 +172,20 @@ development history.
     with A0 = 0 then `beq` branched on the flags from before the move (A/UX's cc, "Memory
     fault" on every run). The gate now excludes PMMU faults.
 
+### Since 2026-11-24: frames on an odd stack
+
+47. RTE read its frame's format word from the frame's last bus beat only. The 68030 allows an
+    odd A7; a frame there splits the format word over two beats, and the kernel took the vector
+    offset's low byte for the format ($68: format $6), a false format error (vector 14). The
+    IIci ROM's video driver (SetEntries) builds a table on the stack with an odd A7, and the VBL
+    interrupt taken there crashed palette-animating games (Prince of Persia: "Spurious
+    interrupt", system error 28). The word is now assembled from all its beats. Present since
+    the import (its 16-bit bus never split a word); every core.
+48. A format error stacked its frame from A7 as it was when the RTE was decoded, before the
+    previous instruction's update had reached the register file: after `MOVEM.L (A7)+,list`
+    the frame landed the popped registers' length below the stack. A7 is now taken when the
+    RTE reads the frame.
+
 ## Known open (deferred)
 
 - A PMMU instruction's full-format EA is wrong when no fault occurs.
@@ -225,10 +239,12 @@ preamble of earlier exceptions (an external bus error, a level-2 interrupt, page
 a format $A write and one inside an FPU dialog, a trace), so a latch one exception sets and a
 later one reads is never fresh from reset (fix 46 had passed benches that started from reset);
 the condition codes start from every flag's opposite, a bus error is nested in every page
-fault's handler, and a traced MOVES faults with its trace owed. On the board: Mac OS 6.0.5-7.5.5
-and A/UX 3.1 with its X11 clients, A/UX among them under memory pressure (paging); NetBSD 11.1
-multi-user on both cores; The Pawn's empty-slot read (fix 37) on both cores. The
-benches belong to the SE/30 project and can be shared.
+fault's handler, and a traced MOVES faults with its trace owed. Since 2026-11-24 the
+coprocessor programs (every frame format and its RTE, interrupts inside dialogs, page faults)
+also run with the supervisor stack one, two and three bytes off alignment. On the board: Mac OS
+6.0.5-7.5.5 and A/UX 3.1 with its X11 clients, A/UX among them under memory pressure (paging);
+NetBSD 11.1 multi-user on both cores; The Pawn's empty-slot read (fix 37) on both cores; Prince
+of Persia on the IIci (fix 47). The benches belong to the SE/30 project and can be shared.
 
 ## Licence
 
